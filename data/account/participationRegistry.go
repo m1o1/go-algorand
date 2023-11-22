@@ -31,10 +31,21 @@ import (
 	"github.com/algorand/go-algorand/logging"
 	"github.com/algorand/go-algorand/protocol"
 	"github.com/algorand/go-algorand/util/db"
+	"github.com/algorand/go-algorand/util/metrics"
 	"github.com/algorand/go-deadlock"
 )
 
 const defaultTimeout = 5 * time.Second
+
+var participationBlocksProposedCounter = metrics.MakeCounter(
+	metrics.MetricName{Name: "algod_participation_blocks_proposed", Description: "Number of blocks proposed by the node"},
+)
+var participationBlocksVotedCounter = metrics.MakeCounter(
+	metrics.MetricName{Name: "algod_participation_blocks_voted", Description: "Number of blocks voted on by the node"},
+)
+var participationStateProofsCounter = metrics.MakeCounter(
+	metrics.MetricName{Name: "algod_participation_state_proofs", Description: "Number of state proofs performed by the node"},
+)
 
 // ParticipationID identifies a particular set of participation keys.
 //
@@ -978,10 +989,13 @@ func (db *participationDB) Record(account basics.Address, round basics.Round, pa
 	// Good case, one key found.
 	switch participationAction {
 	case Vote:
+		participationBlocksVotedCounter.Inc(nil)
 		record.LastVote = round
 	case BlockProposal:
+		participationBlocksProposedCounter.Inc(nil)
 		record.LastBlockProposal = round
 	case StateProof:
+		participationStateProofsCounter.Inc(nil)
 		record.LastStateProof = round
 	default:
 		return ErrUnknownParticipationAction
